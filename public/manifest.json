@@ -10,7 +10,9 @@
   "permissions": ["notifications"],
   "gcm_sender_id": "103953800507",
   "notification_preferences": {
-    "enabled": true
+    "enabled": true,
+    "categories": ["general", "updates", "promotions"],
+    "popup": true
   },
   "icons": [
     {
