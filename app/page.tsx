@@ -4,11 +4,43 @@ import { useEffect, useState } from 'react';
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
+interface BrowserSupport {
+  serviceWorker: boolean;
+  pushManager: boolean;
+  notifications: boolean;
+  https: boolean;
+}
+
 export default function Home() {
   const [isSupported, setIsSupported] = useState(true);
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [supportDetails, setSupportDetails] = useState<BrowserSupport>({
+    serviceWorker: false,
+    pushManager: false,
+    notifications: false,
+    https: false,
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkBrowserSupport();
+    registerServiceWorker();
+
+  }, []);
+
+  const checkBrowserSupport = () => {
+    const details: BrowserSupport = {
+      serviceWorker: 'serviceWorker' in navigator,
+      pushManager: 'PushManager' in window,
+      notifications: 'Notification' in window,
+      https: window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+    };
+
+    setSupportDetails(details);
+    setIsSupported(Object.values(details).every(Boolean));
+  };
 
   useEffect(() => {
     // 브라우저 지원 여부 확인
@@ -28,10 +60,19 @@ export default function Home() {
 
   async function registerServiceWorker() {
     try {
-      const registration = await navigator.serviceWorker.register(`/sw.js?v=${Date.now()}`);
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await registration.update();
+      
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      
       checkSubscription(registration);
+      setError(null); // 성공 시 에러 초기화
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러가 발생했습니다.';
       console.error('Service Worker 등록 실패:', error);
+      setError(`Service Worker 등록 실패: ${errorMessage}`);
     }
   }
 
@@ -76,8 +117,11 @@ export default function Home() {
       
       setIsSubscribed(true);
       setSubscription(subscription);
+      setError(null); // 성공 시 에러 초기화
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러가 발생했습니다.';
       console.error('알림 구독 실패:', error);
+      setError(`알림 구독 실패: ${errorMessage}`);
     }
   }
 
@@ -97,9 +141,12 @@ export default function Home() {
 
         setIsSubscribed(false);
         setSubscription(null);
+        setError(null); // 성공 시 에러 초기화
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러가 발생했습니다.';
       console.error('알림 구독 취소 실패:', error);
+      setError(`알림 구독 취소 실패: ${errorMessage}`);
     }
   }
 
@@ -112,30 +159,61 @@ export default function Home() {
         },
         body: JSON.stringify(subscription)
       });
+      console.log(new Notification('test'));
 
       if (!response.ok) {
         throw new Error('테스트 알림 전송 실패');
       }
+      setError(null); // 성공 시 에러 초기화
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러가 발생했습니다.';
       console.error('테스트 알림 전송 실패:', error);
+      setError(`테스트 알림 전송 실패: ${errorMessage}`);
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 gap-4">
       <h1 className="text-2xl font-bold mb-4">Web Push 데모</h1>
-      {!isSupported ? (
-          <p className="text-red-500">
-            이 브라우저는 웹 푸시 알림을 지원하지 않습니다.
-          </p>
-        ) : !isSubscribed ? (
+      
+      {/* 브라우저 지원 현황 */}
+      {!isSupported && (
+        <div className="text-red-500 mb-4">
+          <p className="font-bold mb-2">브라우저 지원 현황:</p>
+          <ul className="list-disc pl-5">
+            {!supportDetails.serviceWorker && (
+              <li>Service Worker가 지원되지 않습니다.</li>
+            )}
+            {!supportDetails.pushManager && (
+              <li>Push API가 지원되지 않습니다.</li>
+            )}
+            {!supportDetails.notifications && (
+              <li>Notifications API가 지원되지 않습니다.</li>
+            )}
+            {!supportDetails.https && (
+              <li>HTTPS 연결이 필요합니다.</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* 에러 메시지 표시 */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong className="font-bold">에러 발생! </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      {/* 기존 버튼들 */}
+      {isSupported && !isSubscribed ? (
         <button
           onClick={subscribeToNotifications}
           className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           알림 구독하기
         </button>
-      ) : (
+      ) : isSupported && (
         <>
           <button
             onClick={unsubscribeFromNotifications}
