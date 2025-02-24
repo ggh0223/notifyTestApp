@@ -28,7 +28,7 @@ export default function Home() {
 
   async function registerServiceWorker() {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      const registration = await navigator.serviceWorker.register(`/sw.js?v=${Date.now()}`);
       checkSubscription(registration);
     } catch (error) {
       console.error('Service Worker 등록 실패:', error);
@@ -47,7 +47,7 @@ export default function Home() {
       // Service Worker 등록 확인
       let registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
-        registration = await navigator.serviceWorker.register('/sw.js');
+        registration = await navigator.serviceWorker.register(`/sw.js?v=${Date.now()}`);
       }
       
       
