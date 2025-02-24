@@ -1,13 +1,22 @@
 self.addEventListener('push', (event) => {
-    const options = {
-      body: event.data.text(),
-      icon: '/icon.png',
-      badge: '/icon.png',
-    };
-  
-    event.waitUntil(
-      self.registration.showNotification('Push Notification', options)
-    );
+    if (event.data) {
+        const data = event.data.json();
+        const options = {
+          ...data.notification,
+          // 알림 우선순위 설정
+          priority: 2, // 최대 우선순위
+          // 화면이 잠겨있을 때도 표시
+          showTrigger: new TimestampTrigger(Date.now()),
+          // 알림음 설정
+        //   sound: '/notification-sound.mp3',
+          // 알림 표시 시간
+          timestamp: Date.now()
+        };
+    
+        event.waitUntil(
+          self.registration.showNotification(data.notification.title, options)
+        );
+      }
   });
   
   self.addEventListener('notificationclick', (event) => {
