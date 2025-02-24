@@ -1,6 +1,7 @@
 self.addEventListener('push', (event) => {
     if (event.data) {
         const data = event.data.json();
+        console.log(data);
         const options = {
           ...data.notification,
           // 알림 우선순위 설정
