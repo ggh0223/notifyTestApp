@@ -6,6 +6,7 @@ self.addEventListener('push', (event) => {
             icon: '/lumir.png',
             requireInteraction: true,
             vibrate: [100, 50, 100],
+            silent: false,
             body: "test",
             data: {
               priority: "high",
