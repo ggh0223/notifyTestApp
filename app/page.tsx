@@ -23,8 +23,21 @@ export default function Home() {
     https: false,
   });
   const [error, setError] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<PermissionState>('prompt');
 
   useEffect(() => {
+    navigator.permissions.query({ name: "notifications" }).then((result) => {
+      setNotificationPermission(result.state);
+      
+      // 권한 상태 변경 감지
+      result.addEventListener('change', () => {
+        setNotificationPermission(result.state);
+      });
+
+      if (result.state === "denied") {
+        setError("알림이 차단되었습니다. 크롬 설정에서 '팝업으로 표시'를 활성화하세요.");
+      }
+    });
     checkBrowserSupport();
     registerServiceWorker();
 
@@ -41,22 +54,6 @@ export default function Home() {
     setSupportDetails(details);
     setIsSupported(Object.values(details).every(Boolean));
   };
-
-  useEffect(() => {
-    // 브라우저 지원 여부 확인
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setIsSupported(false);
-      return;
-    }
-
-    // HTTPS 확인
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-      setIsSupported(false);
-      return;
-    }
-
-    registerServiceWorker();
-  }, []);
 
   async function registerServiceWorker() {
     try {
@@ -171,10 +168,34 @@ export default function Home() {
     }
   }
 
+  const getPermissionText = (state: PermissionState) => {
+    const texts = {
+      'granted': '알림 권한이 허용되었습니다',
+      'denied': '알림 권한이 차단되었습니다',
+      'prompt': '알림 권한을 요청할 수 있습니다'
+    };
+    return texts[state];
+  };
+
+  const getPermissionColor = (state: PermissionState) => {
+    const colors = {
+      'granted': 'bg-green-100 text-green-700 border-green-400',
+      'denied': 'bg-red-100 text-red-700 border-red-400',
+      'prompt': 'bg-yellow-100 text-yellow-700 border-yellow-400'
+    };
+    return colors[state];
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 gap-4">
       <h1 className="text-2xl font-bold mb-4">Web Push 데모</h1>
       
+      {/* 알림 권한 상태 표시 */}
+      <div className={`border px-4 py-3 rounded relative mb-4 ${getPermissionColor(notificationPermission)}`}>
+        <strong className="font-bold">알림 권한 상태: </strong>
+        <span className="block sm:inline">{getPermissionText(notificationPermission)}</span>
+      </div>
+
       {/* 브라우저 지원 현황 */}
       {!isSupported && (
         <div className="text-red-500 mb-4">
