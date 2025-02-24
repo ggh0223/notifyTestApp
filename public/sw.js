@@ -3,7 +3,7 @@ self.addEventListener('push', (event) => {
         const data = event.data.json();
         event.waitUntil(
           self.registration.showNotification(data.notification.title, {
-            badge: '/badge.png',
+            badge: '/11.png',
             icon: '/lumir.png',
             requireInteraction: true,
             vibrate: [100, 50, 100],
