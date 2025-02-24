@@ -11,6 +11,12 @@ interface BrowserSupport {
   https: boolean;
 }
 
+interface CheckStatus {
+  notificationPermission: boolean;
+  serviceWorkerRegistered: boolean;
+  pushSubscribed: boolean;
+}
+
 export default function Home() {
   const [isSupported, setIsSupported] = useState(true);
 
@@ -24,6 +30,11 @@ export default function Home() {
   });
   const [error, setError] = useState<string | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<PermissionState>('prompt');
+  const [checkStatus, setCheckStatus] = useState<CheckStatus>({
+    notificationPermission: false,
+    serviceWorkerRegistered: false,
+    pushSubscribed: false
+  });
 
   useEffect(() => {
     navigator.permissions.query({ name: "notifications" }).then((result) => {
@@ -62,6 +73,8 @@ export default function Home() {
     window.addEventListener('appinstalled', () => {
       console.log('PWA was installed');
     });
+
+    checkAllStatus();
   }, []);
 
   const checkBrowserSupport = () => {
@@ -214,10 +227,54 @@ export default function Home() {
     return colors[state];
   };
 
+  const checkAllStatus = async () => {
+    // 알림 권한 확인
+    const permission = await Notification.permission;
+    
+    // 서비스 워커 등록 확인
+    const registration = await navigator.serviceWorker.getRegistration();
+    
+    // 푸시 구독 상태 확인
+    const subscription = registration ? await registration.pushManager.getSubscription() : null;
+
+    setCheckStatus({
+      notificationPermission: permission === 'granted',
+      serviceWorkerRegistered: !!registration,
+      pushSubscribed: !!subscription
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 gap-4">
       <h1 className="text-2xl font-bold mb-4">Web Push 데모</h1>
       
+      {/* 상태 체크 결과 */}
+      <div className="mb-4 w-full max-w-md">
+        <h2 className="font-bold mb-2">상태 체크:</h2>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between p-2 border rounded">
+            <span>알림 권한</span>
+            <span className={checkStatus.notificationPermission ? "text-green-600" : "text-red-600"}>
+              {checkStatus.notificationPermission ? "✓ 허용됨" : "✗ 허용되지 않음"}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 border rounded">
+            <span>서비스 워커</span>
+            <span className={checkStatus.serviceWorkerRegistered ? "text-green-600" : "text-red-600"}>
+              {checkStatus.serviceWorkerRegistered ? "✓ 등록됨" : "✗ 등록되지 않음"}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between p-2 border rounded">
+            <span>푸시 구독</span>
+            <span className={checkStatus.pushSubscribed ? "text-green-600" : "text-red-600"}>
+              {checkStatus.pushSubscribed ? "✓ 구독중" : "✗ 구독되지 않음"}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* 알림 권한 상태 표시 */}
       <div className={`border px-4 py-3 rounded relative mb-4 ${getPermissionColor(notificationPermission)}`}>
         <strong className="font-bold">알림 권한 상태: </strong>
