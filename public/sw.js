@@ -6,7 +6,7 @@ self.addEventListener('push', (event) => {
           // 알림 우선순위 설정
           priority: 2, // 최대 우선순위
           // 화면이 잠겨있을 때도 표시
-          showTrigger: new TimestampTrigger(Date.now()),
+          showTrigger: Date.now(),
           // 알림음 설정
         //   sound: '/notification-sound.mp3',
           // 알림 표시 시간
