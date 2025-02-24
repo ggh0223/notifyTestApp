@@ -4,7 +4,7 @@ self.addEventListener('push', (event) => {
         event.waitUntil(
           self.registration.showNotification(data.notification.title, {
             badge: '/11.png',
-            icon: '/lumir.png',
+            icon: '/11.png',
             requireInteraction: true,
             vibrate: [100, 50, 100],
             silent: false,
