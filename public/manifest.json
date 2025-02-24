@@ -6,6 +6,9 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
+  "prefer_related_applications": false,
+  "permissions": ["notifications"],
+  "gcm_sender_id": "103953800507",
   "icons": [
     {
      "src": "\/android-icon-36x36.png",

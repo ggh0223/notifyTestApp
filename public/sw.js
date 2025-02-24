@@ -25,17 +25,39 @@ const urlsToCache = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        // 각 파일을 개별적으로 캐시하여 일부 파일이 없더라도 계속 진행
-        return Promise.allSettled(
-          urlsToCache.map(url => 
-            cache.add(url).catch(err => 
-              console.warn(`Failed to cache ${url}:`, err)
+    Promise.all([
+      caches.open(CACHE_NAME)
+        .then((cache) => {
+          return Promise.allSettled(
+            urlsToCache.map(url => 
+              cache.add(url).catch(err => 
+                console.warn(`Failed to cache ${url}:`, err)
+              )
             )
-          )
+          );
+        }),
+      // 서비스 워커 설치 즉시 활성화
+      self.skipWaiting()
+    ])
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      // 새로운 서비스 워커가 즉시 제어권을 가져가도록 함
+      self.clients.claim(),
+      // 이전 캐시 삭제
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
         );
       })
+    ])
   );
 });
 

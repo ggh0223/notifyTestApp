@@ -50,6 +50,18 @@ export default function Home() {
           console.error('Service Worker registration failed:', error);
         });
     }
+
+    // PWA 설치 감지
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      // 필요한 경우 설치 프롬프트를 나중에 표시하기 위해 이벤트를 저장
+      // deferredPrompt = e;
+    });
+
+    // PWA가 설치되었을 때
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA was installed');
+    });
   }, []);
 
   const checkBrowserSupport = () => {
