@@ -18,6 +18,19 @@ self.addEventListener('push', (event) => {
         event.waitUntil(
           self.registration.showNotification(data.notification.title, {
             icon: './favicon.ico',
+            requireInteraction: true,
+            vibrate: [100, 50, 100],
+            body: "test",
+            data: {
+              priority: "high",
+            },
+            actions: [
+              {
+                action: 'close',
+                title: '닫기',
+              },
+              
+            ]
           })
         );
       }
