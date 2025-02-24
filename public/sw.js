@@ -3,22 +3,14 @@ self.addEventListener('push', (event) => {
         const data = event.data.json();
         event.waitUntil(
           self.registration.showNotification(data.notification.title, {
-            badge: '/11.png',
-            icon: '/11.png',
-            requireInteraction: true,
-            vibrate: [100, 50, 100],
-            silent: false,
-            body: "test",
-            data: {
-              priority: "high",
-            },
-            actions: [
-              {
-                action: 'close',
-                title: '닫기',
-              },
-              
-            ]
+            badge: data.notification.badge  ,
+            icon: data.notification.icon,
+            requireInteraction: data.notification.requireInteraction,
+            vibrate: data.notification.vibrate,
+            silent: data.notification.silent,
+            body: data.notification.body,
+            data: data.notification.data,
+            actions: data.notification.actions,
           })
         );
       }
