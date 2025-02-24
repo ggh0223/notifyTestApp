@@ -9,6 +9,9 @@
   "prefer_related_applications": false,
   "permissions": ["notifications"],
   "gcm_sender_id": "103953800507",
+  "notification_preferences": {
+    "enabled": true
+  },
   "icons": [
     {
      "src": "\/android-icon-36x36.png",

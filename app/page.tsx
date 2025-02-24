@@ -102,19 +102,26 @@ export default function Home() {
 
   async function subscribeToNotifications() {
     try {
-      
-      // Service Worker 등록 확인
-      let registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        registration = await navigator.serviceWorker.register(`/sw.js?v=${Date.now()}`);
-      }
-      
-      
+      // 먼저 알림 권한 요청
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         throw new Error('알림 권한이 거부되었습니다.');
       }
 
+      // Service Worker 등록 확인
+      let registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        registration = await navigator.serviceWorker.register('/sw.js');
+        await registration.update();
+      }
+
+      // 기존 구독이 있다면 제거
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+      }
+
+      // 새로운 구독 생성
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey
@@ -135,7 +142,7 @@ export default function Home() {
       
       setIsSubscribed(true);
       setSubscription(subscription);
-      setError(null); // 성공 시 에러 초기화
+      setError(null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 에러가 발생했습니다.';
       console.error('알림 구독 실패:', error);

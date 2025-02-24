@@ -70,20 +70,38 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  const options = {
-    ...event.data.notification,
-    icon: '/android-icon-192x192.png',
-    badge: '/android-icon-96x96.png',
-  };
+  if (!event.data) return;
 
-  event.waitUntil(
-    self.registration.showNotification(event.data.notification.title, options)
-  );
+  try {
+    const data = event.data.json();
+    const options = {
+      ...data.notification,
+      icon: '/android-icon-192x192.png',
+      badge: '/android-icon-96x96.png',
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.notification.title, options)
+    );
+  } catch (err) {
+    console.error('Push event handling failed:', err);
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
   event.waitUntil(
-    clients.openWindow('/')
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === '/' && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow('/');
+    })
   );
 });
