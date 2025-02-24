@@ -159,7 +159,6 @@ export default function Home() {
         },
         body: JSON.stringify(subscription)
       });
-      console.log(new Notification('test'));
 
       if (!response.ok) {
         throw new Error('테스트 알림 전송 실패');

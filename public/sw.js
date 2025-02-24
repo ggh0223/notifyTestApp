@@ -15,14 +15,11 @@ self.addEventListener('push', (event) => {
         // };
         // const noti = new self.Notification(data.notification.title);
 
-        console.log(self.registration);
-        // event.waitUntil(
-        //   self.registration.showNotification(data.notification.title, {
-        //     ...data.notification,
-        //     showTrigger: Date.now(),
-        //     timestamp: Date.now()
-        //   })
-        // );
+        event.waitUntil(
+          self.registration.showNotification(data.notification.title, {
+            icon: './favicon.ico',
+          })
+        );
       }
   });
 
