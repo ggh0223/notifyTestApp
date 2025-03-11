@@ -281,7 +281,7 @@ export default function Home() {
         <h2 className="font-bold mb-2">상태 체크:</h2>
         <div className="space-y-2">
           <div className="flex items-center justify-between p-2 border rounded">
-            <span>알림 권한</span>
+            <span>알림 권한 상태</span>
             <span
               className={
                 checkStatus.notificationPermission
