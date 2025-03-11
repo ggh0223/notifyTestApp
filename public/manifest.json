@@ -13,8 +13,19 @@
   "scope": "/",
   "orientation": "any",
   "categories": ["utilities"],
-  "shortcuts": [],
-  "screenshots": [],
+  "display_override": ["window-controls-overlay", "standalone"],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "notification_triggers": {
+    "show_triggers": true,
+    "scheduling": true
+  },
+  "notifications": {
+    "vibrate": true,
+    "requireInteraction": true,
+    "silent": false
+  },
   "icons": [
     {
       "src": "/android-icon-36x36.png",
