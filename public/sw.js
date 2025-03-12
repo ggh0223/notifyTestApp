@@ -21,6 +21,7 @@ const urlsToCache = [
   "/favicon-16x16.png",
   "/favicon-32x32.png",
   "/favicon-96x96.png",
+  "/firebase-messaging-sw.js",
 ];
 
 self.addEventListener("install", (event) => {
@@ -74,21 +75,65 @@ self.addEventListener("push", (event) => {
 
   try {
     const data = event.data.json();
-    console.log("push", data);
+    console.log("push notification received:", data);
+
     const options = {
       ...data,
       icon: "/android-icon-192x192.png",
       badge: "/android-icon-96x96.png",
+      vibrate: [200, 100, 200],
+      actions: [
+        {
+          action: "open",
+          title: "열기",
+        },
+        {
+          action: "close",
+          title: "닫기",
+        },
+      ],
     };
-
+    console.log("options", options);
     event.waitUntil(self.registration.showNotification(data.title, options));
   } catch (err) {
     console.error("Push event handling failed:", err);
   }
 });
 
+// FCM 메시지 처리
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "FCM_MSG") {
+    const payload = event.data.payload;
+    console.log("FCM message received:", payload);
+
+    const options = {
+      ...payload.notification,
+      icon: "/android-icon-192x192.png",
+      badge: "/android-icon-96x96.png",
+      vibrate: [200, 100, 200],
+      actions: [
+        {
+          action: "open",
+          title: "열기",
+        },
+        {
+          action: "close",
+          title: "닫기",
+        },
+      ],
+      data: payload.data,
+    };
+
+    self.registration.showNotification(payload.notification.title, options);
+  }
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  if (event.action === "close") {
+    return;
+  }
 
   event.waitUntil(
     clients

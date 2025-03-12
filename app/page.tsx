@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const fcmPublicKey =
+  "BKg3VWYkjevS3orr_D3PJbvPHkbLElfe9HSQ3zGNpDa9eV13Hon2EVAvClAjErbCvBzY_g36KxbobJ1iGMdSwyw";
 
 interface LoginFormProps {
   onLoginSuccess: (token: string) => void;
@@ -106,15 +108,17 @@ interface NotificationControlProps {
 const NotificationControl = ({ authToken }: NotificationControlProps) => {
   const [isSupported, setIsSupported] = useState(true);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(
-    null
-  );
+  const [subscription, setSubscription] = useState<{
+    webPush: PushSubscription | null;
+    fcm: string | null;
+  }>({ webPush: null, fcm: null });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     checkBrowserSupport();
     registerServiceWorker();
     checkNotificationPermission();
+    initializeFCM();
   }, []);
 
   const checkBrowserSupport = () => {
@@ -130,9 +134,7 @@ const NotificationControl = ({ authToken }: NotificationControlProps) => {
   const checkNotificationPermission = async () => {
     const result = await navigator.permissions.query({ name: "notifications" });
     if (result.state === "denied") {
-      setError(
-        "알림이 차단되었습니다. 크롬 설정에서 '팝업으로 표시'를 활성화하세요."
-      );
+      setError("알림이 차단되었습니다. 브라우저 설정에서 알림을 허용해주세요.");
     }
   };
 
@@ -146,10 +148,48 @@ const NotificationControl = ({ authToken }: NotificationControlProps) => {
     }
   }
 
+  async function initializeFCM() {
+    try {
+      const { initializeApp } = await import("firebase/app");
+      const { getMessaging, getToken } = await import("firebase/messaging");
+
+      // # FIREBASE_API_KEY=AIzaSyBQ1xJlVCd43FB9xJE591MdVqoq6be_7XA
+      // # FIREBASE_AUTH_DOMAIN=lumir-notification.firebaseapp.com
+      // # FIREBASE_PROJECT_ID=lumir-notification
+      // # FIREBASE_STORAGE_BUCKET=lumir-notification.firebasestorage.app
+      // # FIREBASE_MESSAGING_SENDER_ID=217443719677
+      // # FIREBASE_APP_ID=1:217443719677:web:f2b5ab79c2ec1c4cf76194
+      // # FIREBASE_MEASUREMENT_ID=G-ZG3T4FVWE2
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBQ1xJlVCd43FB9xJE591MdVqoq6be_7XA",
+        authDomain: "lumir-notification.firebaseapp.com",
+        projectId: "lumir-notification",
+        messagingSenderId: "217443719677",
+        appId: "1:217443719677:web:f2b5ab79c2ec1c4cf76194",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const messaging = getMessaging(app);
+
+      // FCM 토큰 가져오기
+      const currentToken = await getToken(messaging, {
+        vapidKey: fcmPublicKey,
+      });
+
+      if (currentToken) {
+        setSubscription((prev) => ({ ...prev, fcm: currentToken }));
+      }
+    } catch (error) {
+      console.error("FCM initialization failed:", error);
+    }
+  }
+
   async function checkSubscription(registration: ServiceWorkerRegistration) {
-    const subscription = await registration.pushManager.getSubscription();
-    setIsSubscribed(!!subscription);
-    setSubscription(subscription);
+    const webPushSubscription =
+      await registration.pushManager.getSubscription();
+    setIsSubscribed(!!(webPushSubscription || subscription.fcm));
+    setSubscription((prev) => ({ ...prev, webPush: webPushSubscription }));
   }
 
   async function subscribeToNotifications() {
@@ -159,29 +199,37 @@ const NotificationControl = ({ authToken }: NotificationControlProps) => {
         throw new Error("알림 권한이 거부되었습니다.");
       }
 
+      // Web Push 구독
       let registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
         registration = await navigator.serviceWorker.register("/sw.js");
       }
 
-      const existingSubscription =
-        await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        await existingSubscription.unsubscribe();
-      }
-
-      const subscription = await registration.pushManager.subscribe({
+      const webPushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey,
       });
 
+      // FCM 토큰 새로 가져오기
+      const { getMessaging, getToken } = await import("firebase/messaging");
+      const messaging = getMessaging();
+      const fcmToken = await getToken(messaging, {
+        vapidKey: fcmPublicKey,
+      });
+
+      // 서버에 구독 정보 전송
       const response = await fetch(`${apiUrl}/notifications/subscribe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify(subscription),
+        body: JSON.stringify({
+          webPush: webPushSubscription,
+          fcm: {
+            token: fcmToken,
+          },
+        }),
       });
 
       if (!response.ok) {
@@ -189,7 +237,7 @@ const NotificationControl = ({ authToken }: NotificationControlProps) => {
       }
 
       setIsSubscribed(true);
-      setSubscription(subscription);
+      setSubscription({ webPush: webPushSubscription, fcm: fcmToken });
       setError(null);
     } catch (error) {
       const errorMessage =
@@ -202,21 +250,32 @@ const NotificationControl = ({ authToken }: NotificationControlProps) => {
 
   async function unsubscribeFromNotifications() {
     try {
-      if (subscription) {
-        await subscription.unsubscribe();
-        await fetch(`${apiUrl}/notifications/unsubscribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(subscription),
-        });
-
-        setIsSubscribed(false);
-        setSubscription(null);
-        setError(null);
+      // Web Push 구독 취소
+      if (subscription.webPush) {
+        await subscription.webPush.unsubscribe();
       }
+
+      // FCM 토큰 삭제
+      if (subscription.fcm) {
+        const { getMessaging, deleteToken } = await import(
+          "firebase/messaging"
+        );
+        const messaging = getMessaging();
+        await deleteToken(messaging);
+      }
+
+      // 서버에 구독 취소 알림
+      await fetch(`${apiUrl}/notifications/unsubscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      setIsSubscribed(false);
+      setSubscription({ webPush: null, fcm: null });
+      setError(null);
     } catch (error) {
       const errorMessage =
         error instanceof Error
